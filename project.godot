@@ -6,7 +6,7 @@ config_version=5
 
 config/name="ToneRace"
 config/description="Carrera musical: corrés tocando el Canon."
-run/main_scene="res://scenes/music_test.tscn"
+run/main_scene="res://scenes/race_test.tscn"
 config/features=PackedStringArray("4.7", "Mobile")
 
 [display]

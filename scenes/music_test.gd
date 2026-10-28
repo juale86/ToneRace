@@ -6,7 +6,6 @@ extends Node
 ## M: melodía on/off   P: compensación de tono on/off
 ## Espacio: pausa      R: reiniciar
 
-const GENRE_DIR := "res://assets/audio/generated/rock"
 const MIN_BPM := 80.0
 const MAX_BPM := 140.0
 const BPM_PER_SEC := 20.0
@@ -26,14 +25,12 @@ var paused := false
 
 
 func _ready() -> void:
-	song = Song.load_json("res://data/songs/canon.json")
-	var manifest: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(GENRE_DIR.path_join("manifest.json")))
-	base = BasePlayer.new()
-	add_child(base)
-	base.setup(manifest, GENRE_DIR)
-	sampler = Sampler.new()
-	add_child(sampler)
-	sampler.setup(manifest, GENRE_DIR)
+	var rig := MusicRig.new()
+	add_child(rig)
+	rig.setup("canon", "rock")
+	song = rig.song
+	base = rig.base
+	sampler = rig.sampler
 	var order: Array[int] = []
 	order.assign(range(song.variations.size()))
 	cycles = song.cycle_lines(order)

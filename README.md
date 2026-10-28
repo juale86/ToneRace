@@ -20,8 +20,12 @@ Por defecto busca FluidSynth y el SoundFont en `%LOCALAPPDATA%\Programs\`. Se pu
 
 ## Correr
 
+Con doble clic en `jugar.cmd`, o:
+
 ```
-godot --path .                    # escena de prueba de música
-godot --path . -- --autotest      # barrido de tempo, imprime la deriva del audio
-godot --headless --path . -s addons/gut/gut_cmdln.gd   # tests
+godot --path .                                   # carrera de prueba (pista aleatoria)
+godot --path . -- --seed=K7PX3M                  # una pista concreta
+godot --path . -- --autotest                     # 30 s con piloto automático, imprime resultados
+godot --path . scenes/music_test.tscn -- --autotest   # barrido de tempo, imprime la deriva del audio
+godot --headless --path . -s addons/gut/gut_cmdln.gd  # tests
 ```
