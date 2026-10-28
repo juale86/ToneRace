@@ -1,0 +1,4 @@
+# Finales de línea LF, como recomienda Godot
+* text=auto eol=lf
+*.wav binary
+*.sf2 binary

@@ -1,0 +1,31 @@
+; Engine configuration file.
+
+config_version=5
+
+[application]
+
+config/name="ToneRace"
+config/description="Carrera musical: corrés tocando el Canon."
+run/main_scene="res://scenes/music_test.tscn"
+config/features=PackedStringArray("4.7", "Mobile")
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=0
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/gut/plugin.cfg")
+
+[physics]
+
+common/physics_ticks_per_second=60
+
+[rendering]
+
+renderer/rendering_method="mobile"
+textures/vram_compression/import_etc2_astc=true

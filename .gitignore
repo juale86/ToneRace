@@ -1,0 +1,21 @@
+# Godot 4
+.godot/
+/android/
+*.translation
+export.cfg
+export_credentials.cfg
+
+# Builds
+/build/
+*.apk
+*.aab
+
+# Audio pipeline intermediates
+/tools/out/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Audio generado por tools/render_audio.py (regenerable)
+/assets/audio/generated/
