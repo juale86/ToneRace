@@ -2,7 +2,7 @@
 	"_format": "Programas MIDI General MIDI (0-127, base 0). Patrones de batería: 1 carácter por corchea a lo largo del ciclo (16 pasos = 8 beats).",
 	"id": "rock",
 	"name": "Rock",
-	"tempo": {"min_bpm": 80, "max_bpm": 140, "max_gear_ratio": 1.05},
+	"tempo": {"min_bpm": 100, "max_bpm": 180, "max_gear_ratio": 1.05},
 	"base": {
 		"bass": {"program": 34, "velocity": 100, "subdivide": 2},
 		"chords": {"program": 18, "velocity": 45, "low": 55, "high": 69},

@@ -5,16 +5,17 @@ extends Node3D
 ## ↑/↓: acelerar/frenar   N: pista nueva   R: reiniciar la misma pista
 ## Seed fijo: godot --path . -- --seed=K7PX3M
 
-const MIN_BPM := 80.0
-const MAX_BPM := 140.0
-const START_BPM := 100.0
-const BPM_PER_SEC := 20.0
+const START_BPM := 120.0
+const BPM_PER_SEC := 25.0
 const COUNT_IN_BEATS := 4.0
-const LATERAL_SPEED := 16.0
+const LATERAL_SPEED := 22.0
 const CAR_HEIGHT := 0.45
-const CAMERA_BACK_BEATS := 1.4
-const CAMERA_LOOK_BEATS := 4.0
-const CAMERA_HEIGHT := 3.2
+# Distancias de cámara en unidades del mundo, independientes de la escala de la pista.
+const CAMERA_BACK := 6.5
+const CAMERA_LOOK := 30.0
+const CAMERA_HEIGHT := 2.3
+const FOV_MIN := 72.0
+const FOV_MAX := 88.0
 
 var rig: MusicRig
 var clock := MusicClock.new()
@@ -81,9 +82,9 @@ func _start(seed_value: int) -> void:
 
 func _physics_process(delta: float) -> void:
 	if Input.is_key_pressed(KEY_UP):
-		clock.bpm = minf(clock.bpm + BPM_PER_SEC * delta, MAX_BPM)
+		clock.bpm = minf(clock.bpm + BPM_PER_SEC * delta, rig.max_bpm)
 	if Input.is_key_pressed(KEY_DOWN):
-		clock.bpm = maxf(clock.bpm - BPM_PER_SEC * delta, MIN_BPM)
+		clock.bpm = maxf(clock.bpm - BPM_PER_SEC * delta, rig.min_bpm)
 	if autopilot:
 		lane = _autopilot_lane()
 
@@ -141,8 +142,9 @@ func _process(delta: float) -> void:
 	var frame := track.geometry.frame_at(beat)
 	_car.global_transform = Transform3D(frame.basis, frame.origin + frame.basis.x * lateral + frame.basis.y * CAR_HEIGHT)
 
-	var back := track.geometry.frame_at(beat - CAMERA_BACK_BEATS)
-	var ahead := track.geometry.frame_at(beat + CAMERA_LOOK_BEATS)
+	var back := track.geometry.frame_at(beat - CAMERA_BACK / TrackGeometry.UNITS_PER_BEAT)
+	var ahead := track.geometry.frame_at(beat + CAMERA_LOOK / TrackGeometry.UNITS_PER_BEAT)
+	_camera.fov = remap(clock.bpm, rig.min_bpm, rig.max_bpm, FOV_MIN, FOV_MAX)
 	_camera.global_position = back.origin + back.basis.y * CAMERA_HEIGHT + back.basis.x * lateral * 0.5
 	_camera.look_at(ahead.origin + ahead.basis.x * lateral * 0.3, back.basis.y)
 

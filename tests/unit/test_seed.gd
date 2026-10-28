@@ -26,12 +26,22 @@ func test_rng_ranges() -> void:
 	var rng := Rng.new(42, "rangos")
 	var seen := {}
 	for i in 500:
-		var v := rng.randi_range(-2, 2)
+		var v := rng.next_int(-2, 2)
 		assert_between(v, -2, 2)
 		seen[v] = true
-		var f := rng.randf()
+		var f := rng.next_float()
 		assert_true(f >= 0.0 and f < 1.0)
 	assert_eq(seen.size(), 5, "salen todos los valores")
+
+
+## Regresión: chance() llegó a usar el randf() global de Godot en vez del propio.
+func test_rng_helpers_are_deterministic() -> void:
+	var a := Rng.new(77, "h")
+	var b := Rng.new(77, "h")
+	for i in 200:
+		assert_eq(a.chance(0.5), b.chance(0.5))
+		assert_eq(a.next_float(), b.next_float())
+		assert_eq(a.next_int(0, 9), b.next_int(0, 9))
 
 
 ## Si este test falla, cambió el generador: todas las pistas existentes cambiarían.

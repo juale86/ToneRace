@@ -64,7 +64,7 @@ func test_boosters_are_in_lanes_and_never_overlap() -> void:
 
 
 func test_track_never_turns_back_on_itself() -> void:
-	for seed_value in range(30):
+	for seed_value in range(200):
 		var track := TrackGenerator.generate(song, seed_value * 7919)
 		var beat := 0.0
 		while beat <= track.length_beats:

@@ -27,7 +27,7 @@ Juego de carreras musical para Android: corrés sobre una pista generada por see
 ## Música
 
 ### Producción (híbrido)
-- **Base:** loop renderizado de un ciclo, en **13 marchas de tempo** (80 → 140 BPM, separadas ≤5%). Crossfade al cruzar de marcha; dentro de cada marcha `pitch_scale` ajusta al BPM exacto (±2,4%) y un **PitchShift compensa el tono**, para que la base quede afinada con las notas en vivo. (Originalmente eran 4 marchas con ±8%, pero eso desafinaba la base contra las notas en vivo.)
+- **Base:** loop renderizado de un ciclo, en **14 marchas de tempo** (100 → 180 BPM, separadas ≤5%). Crossfade al cruzar de marcha; dentro de cada marcha `pitch_scale` ajusta al BPM exacto (±2,4%) y un **PitchShift compensa el tono**, para que la base quede afinada con las notas en vivo. (Originalmente eran 4 marchas con ±8%, pero eso desafinaba la base contra las notas en vivo.)
 - **Secuenciador en vivo:** notas doradas, adornos, Riff y Voz, tocados con los mismos SoundFonts, siempre al BPM exacto.
 - **Pipeline automático:** la obra se escribe una vez como datos (bajo, armonía, melodía, 8 variaciones). Un script + plantilla de género renderiza las bases con **FluidSynth** y SoundFonts de licencia libre. Mismo dato → base y notas en vivo coherentes.
 - Más adelante: algún género producido a mano en DAW.

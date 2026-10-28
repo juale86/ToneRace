@@ -9,7 +9,7 @@ extends RefCounted
 ## - Adornos: 2 a 4 por ciclo, en corcheas libres, con notas del acorde del
 ##   momento que suben con el carril.
 
-const VERSION := 1
+const VERSION := 2
 const VARIATIONS_PER_RACE := 12
 const GROUP_BEATS := 0.5
 const ADORN_LOWEST := 74  # D5
@@ -40,9 +40,9 @@ static func generate(song: Song, seed_value: int, variations := VARIATIONS_PER_R
 static func _variation_order(rng: Rng, bank_size: int, count: int) -> Array[int]:
 	var order: Array[int] = []
 	for i in count:
-		var v := rng.randi_range(0, bank_size - 1)
+		var v := rng.next_int(0, bank_size - 1)
 		if not order.is_empty() and v == order.back():
-			v = (v + rng.randi_range(1, bank_size - 1)) % bank_size
+			v = (v + rng.next_int(1, bank_size - 1)) % bank_size
 		order.append(v)
 	return order
 
@@ -91,15 +91,15 @@ static func _adorn_boosters(song: Song, track: Track, gold: Array[Booster], rng:
 		if track.cycles[i] == Song.INTRO:
 			continue
 		var first_slot := i * slots_per_cycle
-		var wanted := rng.randi_range(2, 4)
+		var wanted := rng.next_int(2, 4)
 		var placed := 0
 		for attempt in 12:
 			if placed == wanted:
 				break
-			var slot := first_slot + rng.randi_range(0, slots_per_cycle - 1)
+			var slot := first_slot + rng.next_int(0, slots_per_cycle - 1)
 			if taken.has(slot):
 				continue
-			var lane := clampi(_previous_gold_lane(taken, slot) + rng.randi_range(-2, 2), 0, Track.LANES - 1)
+			var lane := clampi(_previous_gold_lane(taken, slot) + rng.next_int(-2, 2), 0, Track.LANES - 1)
 			taken[slot] = lane
 			var beat := slot * GROUP_BEATS
 			var booster := Booster.new(beat, lane, Booster.Kind.ADORN)

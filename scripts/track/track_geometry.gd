@@ -6,13 +6,13 @@ extends RefCounted
 ## diferencias de punto flotante entre dispositivos no cambian la carrera.
 
 const STEP := 0.25  # beats entre muestras
-const UNITS_PER_BEAT := 6.0
-const MAX_YAW_PER_BEAT := deg_to_rad(5.0)
+const UNITS_PER_BEAT := 18.0
+const MAX_YAW_PER_BEAT := deg_to_rad(4.0)
 const MAX_PITCH := deg_to_rad(4.0)
 ## Más allá de este giro acumulado, las curvas solo pueden volver hacia el centro
 ## (así la pista nunca da la vuelta y se cruza consigo misma).
-const MAX_HEADING := deg_to_rad(50.0)
-const MAX_ELEVATION := 25.0
+const MAX_HEADING := deg_to_rad(40.0)
+const MAX_ELEVATION := 60.0
 
 var _positions := PackedVector3Array()
 var _headings := PackedFloat32Array()
@@ -33,9 +33,12 @@ static func generate(rng: Rng, cycles: int, cycle_beats: int) -> TrackGeometry:
 		var beat := i * STEP
 		var c := mini(int(beat / cycle_beats), cycles - 1)
 		if c + 1 >= yaw_targets.size():
+			# Se decide con la posición prevista si la curva actual sigue todo el ciclo.
 			var last := c + 1 >= cycles
-			yaw_targets.append(0.0 if last else _pick(rng, heading / MAX_HEADING) * MAX_YAW_PER_BEAT)
-			pitch_targets.append(0.0 if last else _pick(rng, position.y / MAX_ELEVATION) * MAX_PITCH)
+			var heading_ahead := heading + yaw_targets[c] * cycle_beats
+			var height_ahead := position.y + sin(pitch_targets[c]) * UNITS_PER_BEAT * cycle_beats
+			yaw_targets.append(0.0 if last else _pick(rng, heading_ahead / MAX_HEADING) * MAX_YAW_PER_BEAT)
+			pitch_targets.append(0.0 if last else _pick(rng, height_ahead / MAX_ELEVATION) * MAX_PITCH)
 		var t := smoothstep(0.0, 1.0, (beat - c * cycle_beats) / cycle_beats)
 		var pitch := lerpf(pitch_targets[c], pitch_targets[c + 1], t)
 		geometry._positions.append(position)
@@ -53,7 +56,7 @@ static func _pick(rng: Rng, excess: float) -> float:
 		options = [-1.0, -1.0, 0.0]
 	elif excess <= -1.0:
 		options = [1.0, 1.0, 0.0]
-	return options[rng.randi_range(0, options.size() - 1)]
+	return options[rng.next_int(0, options.size() - 1)]
 
 
 ## Origen en el centro de la pista; basis.x apunta a la derecha, -basis.z hacia adelante.

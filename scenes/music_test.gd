@@ -2,14 +2,14 @@ extends Node
 ## Banco de pruebas del paso 1: el Canon suena desde datos con tempo variable.
 ##
 ## Flecha arriba/abajo: acelerar/frenar (simula el acelerador)
-## 1-5: saltar a 80/95/110/125/140 BPM
+## 1-5: saltar a 100/120/140/160/180 BPM
 ## M: melodía on/off   P: compensación de tono on/off
 ## Espacio: pausa      R: reiniciar
 
-const MIN_BPM := 80.0
-const MAX_BPM := 140.0
+const MIN_BPM := 100.0
+const MAX_BPM := 180.0
 const BPM_PER_SEC := 20.0
-const PRESETS := [80.0, 95.0, 110.0, 125.0, 140.0]
+const PRESETS := [100.0, 120.0, 140.0, 160.0, 180.0]
 const COUNT_IN_BEATS := 4.0
 
 var song: Song
@@ -40,7 +40,7 @@ func _ready() -> void:
 		_autotest()
 
 
-## Barre el tempo de 80 a 140 y vuelta, e imprime la deriva del audio. Uso:
+## Barre el tempo de MIN_BPM a MAX_BPM y vuelta, e imprime la deriva del audio. Uso:
 ## godot --path . -- --autotest
 func _autotest() -> void:
 	var worst := 0.0
@@ -50,7 +50,7 @@ func _autotest() -> void:
 	for step in 24 * 60:  # 24 segundos de frames de ~16 ms
 		await get_tree().process_frame
 		var t := step / 60.0
-		clock.bpm = 80.0 + 60.0 * (1.0 - absf(fmod(t / 12.0, 2.0) - 1.0))
+		clock.bpm = MIN_BPM + (MAX_BPM - MIN_BPM) * (1.0 - absf(fmod(t / 12.0, 2.0) - 1.0))
 		if t > 1.0:
 			worst = maxf(worst, absf(base.last_drift_sec))
 			if absf(base.last_drift_sec) > BasePlayer.RESYNC_THRESHOLD_SEC:

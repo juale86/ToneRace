@@ -43,17 +43,17 @@ func next_u32() -> int:
 
 
 ## En [0, 1).
-func randf() -> float:
+func next_float() -> float:
 	return next_u32() / 4294967296.0
 
 
 ## En [low, high], ambos incluidos.
-func randi_range(low: int, high: int) -> int:
+func next_int(low: int, high: int) -> int:
 	return low + next_u32() % (high - low + 1)
 
 
 func chance(probability: float) -> bool:
-	return randf() < probability
+	return next_float() < probability
 
 
 static func _mul32(a: int, b: int) -> int:

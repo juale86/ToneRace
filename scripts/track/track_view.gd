@@ -3,7 +3,7 @@ extends Node3D
 ## Dibuja una Track: la ruta, las líneas de carril, una marca por compás y los
 ## boosters. Todo procedural y provisorio hasta tener los modelos finales.
 
-const MESH_STEP := 0.5  # beats entre cortes de la malla
+const MESH_STEP := 0.25  # beats entre cortes de la malla
 const MARGIN_BEATS := 16.0
 const EDGE_WIDTH := 0.25
 const LINE_WIDTH := 0.06
@@ -12,7 +12,8 @@ const BOOSTER_HEIGHT := 0.5
 const ROAD_COLOR := Color(0.05, 0.04, 0.09)
 const EDGE_COLOR := Color(1.0, 0.2, 0.7)
 const LINE_COLOR := Color(0.35, 0.25, 0.8)
-const BAR_COLOR := Color(0.25, 0.2, 0.5)
+const BAR_COLOR := Color(0.45, 0.3, 0.9)
+const BEAT_COLOR := Color(0.2, 0.15, 0.4)
 const GOLD_COLOR := Color(1.0, 0.75, 0.15)
 const ADORN_COLOR := Color(0.2, 0.9, 1.0)
 
@@ -35,7 +36,8 @@ func build(track: Track) -> void:
 	_append_strip(edges, -half - EDGE_WIDTH, -half, 0.05)
 	_append_strip(edges, half, half + EDGE_WIDTH, 0.05)
 	_add_mesh(edges.commit(), _material(EDGE_COLOR, 3.0))
-	_add_mesh(_bar_marks(half), _material(BAR_COLOR, 1.0))
+	_add_mesh(_cross_marks(half, 4.0, 0.6), _material(BAR_COLOR, 1.6))
+	_add_mesh(_cross_marks(half, 1.0, 0.2), _material(BEAT_COLOR, 0.8))
 	_build_boosters()
 
 
@@ -102,18 +104,21 @@ func _append_strip(st: SurfaceTool, left: float, right: float, height: float) ->
 		beat += MESH_STEP
 
 
-func _bar_marks(half: float) -> ArrayMesh:
+## Franjas transversales cada `every` beats, de `thickness` unidades de ancho.
+func _cross_marks(half: float, every: float, thickness: float) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var bar := 0.0
-	while bar <= _track.length_beats:
-		var a := _track.geometry.frame_at(bar - 0.04)
-		var b := _track.geometry.frame_at(bar + 0.04)
-		var up := Vector3.UP * 0.02
+	var d := thickness / 2.0 / TrackGeometry.UNITS_PER_BEAT
+	var beat := 0.0
+	while beat <= _track.length_beats:
+		var a := _track.geometry.frame_at(beat - d)
+		var b := _track.geometry.frame_at(beat + d)
+		var up_a := a.basis.y * 0.02
+		var up_b := b.basis.y * 0.02
 		_append_quad(st,
-			a.origin - a.basis.x * half + up, a.origin + a.basis.x * half + up,
-			b.origin + b.basis.x * half + up, b.origin - b.basis.x * half + up)
-		bar += 4.0
+			a.origin - a.basis.x * half + up_a, a.origin + a.basis.x * half + up_a,
+			b.origin + b.basis.x * half + up_b, b.origin - b.basis.x * half + up_b)
+		beat += every
 	return st.commit()
 
 
