@@ -1,7 +1,8 @@
 class_name CarView
 extends Node3D
 ## Muscle car placeholder armado con primitivas. El origen queda en el piso, en el
-## centro del auto; -Z es adelante. Se inclina al cambiar de carril y gira las ruedas.
+## centro del auto; -Z es adelante. Se inclina al cambiar de carril, gira las
+## ruedas y deja una estela de luz que se alarga con la velocidad.
 
 const WHEEL_RADIUS := 0.3
 const MAX_ROLL := deg_to_rad(9.0)
@@ -9,11 +10,14 @@ const MAX_YAW := deg_to_rad(12.0)
 ## Velocidad lateral (unidades/s) que produce la inclinación máxima.
 const LEAN_AT := 20.0
 const LEAN_SMOOTHING := 12.0
+const TRAIL_MAX_LENGTH := 3.5
 
 var _body := Node3D.new()
 var _wheels: Array[Node3D] = []
 var _lean := 0.0
 var _wheel_angle := 0.0
+var _trails: Array[MeshInstance3D] = []
+var _trail_material := ShaderMaterial.new()
 
 
 func _ready() -> void:
@@ -54,16 +58,32 @@ func _ready() -> void:
 			spoke.mesh = spoke_mesh
 			hub.add_child(spoke)
 			_wheels.append(hub)
+	_trail_material.shader = preload("res://shaders/trail.gdshader")
+	var trail_mesh := PlaneMesh.new()
+	trail_mesh.size = Vector2(0.22, 1.0)
+	trail_mesh.center_offset = Vector3(0, 0, 0.5)  # arranca en el origen y se estira hacia atrás
+	for x in [-0.63, 0.63]:
+		var trail := MeshInstance3D.new()
+		trail.mesh = trail_mesh
+		trail.material_override = _trail_material
+		trail.position = Vector3(x, 0.5, 1.48)
+		trail.rotation.x = deg_to_rad(-3.0)
+		_body.add_child(trail)
+		_trails.append(trail)
 
 
 ## speed: unidades/s hacia adelante. lateral_speed: unidades/s hacia la derecha.
-func animate(delta: float, speed: float, lateral_speed: float) -> void:
+## intensity: 0 a 1 según el tempo, para la estela.
+func animate(delta: float, speed: float, lateral_speed: float, intensity: float) -> void:
 	var target := clampf(lateral_speed / LEAN_AT, -1.0, 1.0)
 	_lean = lerpf(_lean, target, 1.0 - exp(-LEAN_SMOOTHING * delta))
 	_body.rotation = Vector3(0.0, -_lean * MAX_YAW, -_lean * MAX_ROLL)
 	_wheel_angle = fmod(_wheel_angle - speed * delta / WHEEL_RADIUS, TAU)
 	for hub in _wheels:
 		hub.rotation.x = _wheel_angle
+	for trail in _trails:
+		trail.scale = Vector3(1.0, 1.0, 0.5 + intensity * TRAIL_MAX_LENGTH)
+	_trail_material.set_shader_parameter("strength", 0.2 + 0.4 * intensity)
 
 
 func _box(size: Vector3, at: Vector3, material: Material) -> void:

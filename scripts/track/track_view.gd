@@ -1,12 +1,15 @@
 class_name TrackView
 extends Node3D
 ## Dibuja una Track: la ruta (asfalto, carriles y marcas de beat/compás salen de
-## un shader) y los boosters. Todo procedural.
+## un shader), postes que destellan con el beat y los boosters, que laten. Todo
+## procedural; el beat les llega por el parámetro global de shader "beat".
 
 const MESH_STEP := 0.25  # beats entre cortes de la malla
 const MARGIN_BEATS := 16.0
 const SHOULDER := 1.6
 const BOOSTER_HEIGHT := 0.5
+const POST_GAP := 0.9  # distancia del poste al borde de la banquina
+const POST_HEIGHT := 1.3
 
 const GOLD_COLOR := Color(1.0, 0.75, 0.15)
 const ADORN_COLOR := Color(0.2, 0.9, 1.0)
@@ -28,6 +31,7 @@ func build(track: Track) -> void:
 	instance.mesh = _road_mesh(-half - SHOULDER, half + SHOULDER)
 	instance.material_override = road
 	add_child(instance)
+	_build_posts(half + SHOULDER + POST_GAP)
 	_build_boosters()
 
 
@@ -45,11 +49,13 @@ func booster_position(booster: Booster) -> Vector3:
 func _build_boosters() -> void:
 	var gold_mesh := BoxMesh.new()
 	gold_mesh.size = Vector3(1.4, 0.35, 0.7)
-	gold_mesh.material = _material(GOLD_COLOR, 2.5)
+	gold_mesh.material = _booster_material(GOLD_COLOR, 0.0)
 	var adorn_mesh := SphereMesh.new()
 	adorn_mesh.radius = 0.35
 	adorn_mesh.height = 0.7
-	adorn_mesh.material = _material(ADORN_COLOR, 2.5)
+	adorn_mesh.radial_segments = 8
+	adorn_mesh.rings = 4
+	adorn_mesh.material = _booster_material(ADORN_COLOR, 1.5)
 
 	var by_kind := {Booster.Kind.GOLD: [], Booster.Kind.ADORN: []}
 	for i in _track.boosters.size():
@@ -68,6 +74,40 @@ func _build_boosters() -> void:
 		var instance := MultiMeshInstance3D.new()
 		instance.multimesh = mm
 		add_child(instance)
+
+
+## Un poste por beat a cada lado; los de comienzo de compás, más altos.
+func _build_posts(lateral: float) -> void:
+	var pole := BoxMesh.new()
+	pole.size = Vector3(0.14, POST_HEIGHT, 0.14)
+	var light := BoxMesh.new()
+	light.size = Vector3(0.24, 0.24, 0.24)
+	var st := SurfaceTool.new()
+	st.append_from(pole, 0, Transform3D(Basis(), Vector3(0, POST_HEIGHT / 2.0, 0)))
+	st.append_from(light, 0, Transform3D(Basis(), Vector3(0, POST_HEIGHT + 0.12, 0)))
+	var material := ShaderMaterial.new()
+	material.shader = preload("res://shaders/post.gdshader")
+	material.set_shader_parameter("top", POST_HEIGHT - 0.01)
+	var mesh := st.commit()
+	mesh.surface_set_material(0, material)
+
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_custom_data = true
+	mm.mesh = mesh
+	var beats := int(_track.length_beats) + 1
+	mm.instance_count = beats * 2
+	for b in beats:
+		var frame := _track.geometry.frame_at(b)
+		var bar := b % 4 == 0
+		var scale := Vector3(1.0, 1.6, 1.0) if bar else Vector3.ONE
+		for side in 2:
+			var x := lateral * (1.0 if side == 1 else -1.0)
+			mm.set_instance_transform(b * 2 + side, Transform3D(frame.basis.scaled_local(scale), frame.origin + frame.basis.x * x))
+			mm.set_instance_custom_data(b * 2 + side, Color(1.0 if bar else 0.0, 0, 0, 0))
+	var instance := MultiMeshInstance3D.new()
+	instance.multimesh = mm
+	add_child(instance)
 
 
 ## Cinta que sigue la pista entre los desplazamientos laterales left y right,
@@ -92,11 +132,9 @@ func _road_mesh(left: float, right: float) -> ArrayMesh:
 	return st.commit()
 
 
-func _material(color: Color, emission: float) -> StandardMaterial3D:
-	var m := StandardMaterial3D.new()
-	m.albedo_color = color
-	if emission > 0.0:
-		m.emission_enabled = true
-		m.emission = color
-		m.emission_energy_multiplier = emission
-	return m
+func _booster_material(color: Color, spin: float) -> ShaderMaterial:
+	var material := ShaderMaterial.new()
+	material.shader = preload("res://shaders/booster.gdshader")
+	material.set_shader_parameter("color", color)
+	material.set_shader_parameter("spin", spin)
+	return material

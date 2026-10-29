@@ -15,6 +15,8 @@ const CAMERA_HEIGHT := 2.3
 const FOV_MIN := 72.0
 const FOV_MAX := 88.0
 const MESSAGE_SECONDS := 1.2
+## Sacudida de cámara (unidades) a la marcha más alta; crece con el cuadrado del tempo.
+const SHAKE_MAX := 0.09
 
 var rig: MusicRig
 var runner: Runner
@@ -32,6 +34,8 @@ var _next_booster := 0
 var _pending: Array[PendingNote] = []
 var _message := ""
 var _message_left := 0.0
+var _fx := HitFx.new()
+var _hud := RaceHud.new()
 
 @onready var _camera: Camera3D = $Camera
 @onready var _car: CarView = $Car
@@ -53,6 +57,9 @@ func _ready() -> void:
 	add_child(rig)
 	rig.setup("canon", "rock")
 	runner = Runner.new(rig.min_bpm, rig.max_bpm)
+	_car.add_child(_fx)
+	$UI.add_child(_hud)
+	$UI.move_child(_hud, 0)
 	add_child(human)
 	add_child(auto)
 	var args := OS.get_cmdline_user_args()
@@ -117,16 +124,20 @@ func _cross(index: int) -> void:
 	var booster := track.boosters[index]
 	var gold := booster.kind == Booster.Kind.GOLD
 	if booster.lane != runner.lane:
-		if gold:
+		if gold and combo > 0:
+			_hud.on_combo_break(combo)
 			combo = 0
 		return
 	view.hide_booster(index)
+	var color := TrackView.GOLD_COLOR if gold else TrackView.ADORN_COLOR
+	_fx.hit(color, Track.lane_offset(booster.lane) - lateral)
 	for note in booster.notes:
 		_pending.append(PendingNote.new(note, "lead" if gold else "adorn"))
 	if gold:
 		gold_hits += 1
 		combo += 1
 		best_combo = maxi(best_combo, combo)
+		_hud.on_hit(combo)
 
 
 ## Las notas de un booster pueden caer un poco después de agarrarlo (corcheas agrupadas).
@@ -151,11 +162,14 @@ func _process(delta: float) -> void:
 	var tick := 1.0 / Engine.physics_ticks_per_second
 	var beat := clock.interpolated(Engine.get_physics_interpolation_fraction(), tick)
 	rig.base.update(beat, clock.bpm, delta)
+	var intensity := clampf(inverse_lerp(rig.min_bpm, rig.max_bpm, clock.bpm), 0.0, 1.0)
+	RenderingServer.global_shader_parameter_set(&"beat", beat)
+	RenderingServer.global_shader_parameter_set(&"speed", intensity)
 
 	var previous := lateral
 	lateral = move_toward(lateral, Track.lane_offset(runner.lane), LATERAL_SPEED * delta)
 	var speed := clock.bpm / 60.0 * TrackGeometry.UNITS_PER_BEAT
-	_car.animate(delta, speed, (lateral - previous) / delta if delta > 0.0 else 0.0)
+	_car.animate(delta, speed, (lateral - previous) / delta if delta > 0.0 else 0.0, intensity)
 	var frame := track.geometry.frame_at(beat)
 	_car.global_transform = Transform3D(frame.basis, frame.origin + frame.basis.x * lateral)
 
@@ -164,6 +178,9 @@ func _process(delta: float) -> void:
 	_camera.fov = remap(clock.bpm, rig.min_bpm, rig.max_bpm, FOV_MIN, FOV_MAX)
 	_camera.global_position = back.origin + back.basis.y * CAMERA_HEIGHT + back.basis.x * lateral * 0.5
 	_camera.look_at(ahead.origin + ahead.basis.x * lateral * 0.3, back.basis.y)
+	var t := Time.get_ticks_msec() / 1000.0
+	var shake := SHAKE_MAX * intensity * intensity
+	_camera.position += _camera.basis * Vector3(sin(t * 37.0) + sin(t * 23.0) * 0.5, sin(t * 41.0) * 0.6, 0.0) * shake
 
 	_message_left = maxf(_message_left - delta, 0.0)
 	var cycle := int(floor(beat / track.cycle_beats))

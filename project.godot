@@ -61,6 +61,17 @@ voice={
 ]
 }
 
+[shader_globals]
+
+beat={
+"type": "float",
+"value": 0.0
+}
+speed={
+"type": "float",
+"value": 0.0
+}
+
 [input_devices]
 
 pointing/emulate_touch_from_mouse=true
