@@ -35,6 +35,7 @@ var _pending: Array[PendingNote] = []
 var _message := ""
 var _message_left := 0.0
 var _fx := HitFx.new()
+var _wind := WindFx.new()
 var _hud := RaceHud.new()
 
 @onready var _camera: Camera3D = $Camera
@@ -58,6 +59,8 @@ func _ready() -> void:
 	rig.setup("canon", "rock")
 	runner = Runner.new(rig.min_bpm, rig.max_bpm)
 	_car.add_child(_fx)
+	add_child(_wind)
+	_wind.setup(_camera, _car, CarView.REAR_WHEELS)
 	$UI.add_child(_hud)
 	$UI.move_child(_hud, 0)
 	add_child(human)
@@ -130,7 +133,8 @@ func _cross(index: int) -> void:
 		return
 	view.hide_booster(index)
 	var color := TrackView.GOLD_COLOR if gold else TrackView.ADORN_COLOR
-	_fx.hit(color, Track.lane_offset(booster.lane) - lateral)
+	_fx.hit(color, Track.lane_offset(booster.lane) - lateral, clampf(combo / 16.0, 0.0, 1.0))
+	_car.flash(color)
 	for note in booster.notes:
 		_pending.append(PendingNote.new(note, "lead" if gold else "adorn"))
 	if gold:
@@ -165,6 +169,7 @@ func _process(delta: float) -> void:
 	var intensity := clampf(inverse_lerp(rig.min_bpm, rig.max_bpm, clock.bpm), 0.0, 1.0)
 	RenderingServer.global_shader_parameter_set(&"beat", beat)
 	RenderingServer.global_shader_parameter_set(&"speed", intensity)
+	_wind.update(clock.bpm / 60.0 * TrackGeometry.UNITS_PER_BEAT, intensity)
 
 	var previous := lateral
 	lateral = move_toward(lateral, Track.lane_offset(runner.lane), LATERAL_SPEED * delta)

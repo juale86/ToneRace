@@ -7,9 +7,9 @@ uniform float age = 1.0;  // 0 = recién nace, 1 = terminó
 
 void fragment() {
 	float r = length(UV - 0.5) * 2.0;
-	float radius = mix(0.15, 0.95, sqrt(age));
-	float width = mix(0.05, 0.14, age);
+	float radius = mix(0.1, 0.95, sqrt(age));
+	float width = mix(0.025, 0.07, age);
 	float band = 1.0 - smoothstep(0.0, width, abs(r - radius));
 	ALBEDO = color * 2.5;
-	ALPHA = band * (1.0 - age);
+	ALPHA = band * (1.0 - age) * (1.0 - age);
 }

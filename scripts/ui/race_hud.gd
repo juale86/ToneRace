@@ -1,8 +1,7 @@
 class_name RaceHud
 extends Control
-## Capa visual de la carrera: líneas de velocidad (las maneja el parámetro global
-## "speed"), el contador de combo que salta en cada acierto y un destello rojo en
-## los bordes cuando se corta un combo.
+## Capa visual de la carrera: el contador de combo que salta en cada acierto y un
+## destello rojo en los bordes cuando se corta un combo.
 
 const SHOW_COMBO_FROM := 2
 const BREAK_FLASH_FROM := 4
@@ -19,13 +18,6 @@ var _fading := 0.0
 func _ready() -> void:
 	set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	mouse_filter = MOUSE_FILTER_IGNORE
-
-	var lines := ColorRect.new()
-	lines.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
-	lines.mouse_filter = MOUSE_FILTER_IGNORE
-	lines.material = ShaderMaterial.new()
-	(lines.material as ShaderMaterial).shader = preload("res://shaders/speed_lines.gdshader")
-	add_child(lines)
 
 	_vignette.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	_vignette.mouse_filter = MOUSE_FILTER_IGNORE

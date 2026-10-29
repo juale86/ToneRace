@@ -2,7 +2,8 @@ class_name CarView
 extends Node3D
 ## Muscle car placeholder armado con primitivas. El origen queda en el piso, en el
 ## centro del auto; -Z es adelante. Se inclina al cambiar de carril, gira las
-## ruedas y deja una estela de luz que se alarga con la velocidad.
+## ruedas, deja una estela de luz que se alarga con la velocidad y brilla un
+## instante al agarrar una nota.
 
 const WHEEL_RADIUS := 0.3
 const MAX_ROLL := deg_to_rad(9.0)
@@ -11,6 +12,10 @@ const MAX_YAW := deg_to_rad(12.0)
 const LEAN_AT := 20.0
 const LEAN_SMOOTHING := 12.0
 const TRAIL_MAX_LENGTH := 3.5
+const PAINT := Color(0.85, 0.1, 0.15)
+const GLOW_SECONDS := 0.25
+## Puntos (locales al auto) detrás de las ruedas traseras, para el polvo.
+const REAR_WHEELS: Array[Vector3] = [Vector3(-0.72, 0.15, 1.2), Vector3(0.72, 0.15, 1.2)]
 
 var _body := Node3D.new()
 var _wheels: Array[Node3D] = []
@@ -18,11 +23,14 @@ var _lean := 0.0
 var _wheel_angle := 0.0
 var _trails: Array[MeshInstance3D] = []
 var _trail_material := ShaderMaterial.new()
+var _paint := _material(PAINT, 0.5)
+var _glow := 0.0
+var _glow_color := Color.WHITE
 
 
 func _ready() -> void:
 	add_child(_body)
-	var paint := _material(Color(0.85, 0.1, 0.15), 0.5)
+	var paint := _paint
 	var glass := _material(Color(0.05, 0.05, 0.1), 0.0)
 	var dark := _material(Color(0.08, 0.08, 0.09), 0.0)
 	var stripe := _material(Color(0.95, 0.9, 0.85), 0.3)
@@ -84,6 +92,14 @@ func animate(delta: float, speed: float, lateral_speed: float, intensity: float)
 	for trail in _trails:
 		trail.scale = Vector3(1.0, 1.0, 0.5 + intensity * TRAIL_MAX_LENGTH)
 	_trail_material.set_shader_parameter("strength", 0.2 + 0.4 * intensity)
+	_glow = maxf(_glow - delta / GLOW_SECONDS, 0.0)
+	_paint.emission = PAINT.lerp(_glow_color, _glow * 0.5)
+	_paint.emission_energy_multiplier = 0.5 + 0.9 * _glow
+
+
+func flash(color: Color) -> void:
+	_glow = 1.0
+	_glow_color = color
 
 
 func _box(size: Vector3, at: Vector3, material: Material) -> void:
