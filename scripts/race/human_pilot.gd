@@ -4,8 +4,11 @@ extends Pilot
 ## mandan las mismas acciones). Los toques entre dos ticks se acumulan.
 ## Mantener un lado apretado sigue cambiando de carril, como el autorepeat de un teclado.
 
-const REPEAT_DELAY_TICKS := 12
-const REPEAT_EVERY_TICKS := 5
+## La primera repetición llega apenas después de lo que dura un toque normal
+## (~85-120 ms), para que un toque no mueva dos carriles. Las siguientes van al
+## ritmo en que el auto cruza un carril, así se desliza sin pausas.
+const REPEAT_DELAY_TICKS := 8
+const REPEAT_EVERY_TICKS := 6
 
 var _lane_steps := 0
 var _riff := false

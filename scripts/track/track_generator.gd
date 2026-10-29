@@ -7,11 +7,12 @@ extends RefCounted
 ##   2 boosters por beat). El carril sigue el contorno de la melodía: si la nota
 ##   sube, el carril va hacia lo agudo; si baja, hacia lo grave; si se repite, se
 ##   queda. El salto está limitado por el tiempo hasta la nota anterior, para que
-##   siempre se pueda llegar.
+##   siempre se pueda llegar. Las idas y vueltas largas se cortan quedándose quieto
+##   cada tanto, y un poco de ruido por seed varía el camino entre pistas.
 ## - Adornos: 2 a 4 por ciclo, en corcheas libres, a un carril de la dorada
 ##   anterior, con notas del acorde del momento que suben con el carril.
 
-const VERSION := 3
+const VERSION := 4
 const VARIATIONS_PER_RACE := 12
 const GROUP_BEATS := 0.5
 const ADORN_LOWEST := 74  # D5
@@ -22,6 +23,12 @@ const LANES_PER_GROUP := 1
 ## carril de diferencia con el salto que pide el intervalo.
 const STILL_COST := 3.0
 const SIZE_COST := 0.5
+## Costo por cada ida y vuelta encadenada más allá de la primera (izq-der-izq...).
+const ZIGZAG_COST := 1.5
+const ZIGZAG_CAP := 4
+## Ruido máximo por booster y carril: alcanza para desempatar y variar, no para
+## romper las reglas.
+const NOISE := 1.2
 
 
 static func generate(song: Song, seed_value: int, variations := VARIATIONS_PER_RACE) -> Track:
@@ -72,7 +79,7 @@ static func _gold_boosters(song: Song, track: Track) -> Array[Booster]:
 				result.append(current)
 				pitches.append(note.midi)
 			current.notes.append(note)
-	var lanes := _contour_lanes(result, pitches)
+	var lanes := _contour_lanes(result, pitches, Rng.new(track.seed_value, "contorno"))
 	for i in result.size():
 		result[i].lane = Track.LANES - 1 - lanes[i] if track.inverted else lanes[i]
 	return result
@@ -81,45 +88,65 @@ static func _gold_boosters(song: Song, track: Track) -> Array[Booster]:
 ## Elige el carril de cada booster (0 = grave) con programación dinámica sobre
 ## toda la carrera. Reglas fijas: nota repetida = mismo carril, nota más aguda
 ## nunca va hacia lo grave (y al revés), y el salto entra en el tiempo disponible.
-## Entre los caminos posibles prefiere moverse cuando la nota cambia y saltos
-## proporcionales al intervalo.
-static func _contour_lanes(boosters: Array[Booster], pitches: PackedInt32Array) -> PackedInt32Array:
+## Entre los caminos posibles prefiere moverse cuando la nota cambia, saltos
+## proporcionales al intervalo y pocas idas y vueltas seguidas.
+##
+## Estado: carril, dirección del último salto y cuántas vueltas lleva encadenadas.
+static func _contour_lanes(boosters: Array[Booster], pitches: PackedInt32Array, rng: Rng) -> PackedInt32Array:
 	var n := boosters.size()
 	var lanes := PackedInt32Array()
 	lanes.resize(n)
 	if n == 0:
 		return lanes
+	var zigs := ZIGZAG_CAP + 1
+	var states := Track.LANES * 3 * zigs
+	var noise := PackedFloat64Array()
+	for i in n * Track.LANES:
+		noise.append(rng.next_float() * NOISE)
 	var costs := PackedFloat64Array()
 	var from := PackedInt32Array()
-	costs.resize(n * Track.LANES)
-	from.resize(n * Track.LANES)
+	costs.resize(n * states)
+	costs.fill(INF)
+	from.resize(n * states)
 	for lane in Track.LANES:
-		costs[lane] = absf(lane - 2) * SIZE_COST  # el auto arranca en el centro
+		costs[_state(lane, 0, 0)] = absf(lane - 2) * SIZE_COST + noise[lane]  # el auto arranca en el centro
 	for i in range(1, n):
 		var interval := pitches[i] - pitches[i - 1]
 		var wanted := _wanted_steps(interval)
 		var reach := max_lane_steps(boosters[i].beat - boosters[i - 1].beat)
-		for lane in Track.LANES:
-			var best := INF
-			for prev in Track.LANES:
-				var step := lane - prev
+		for prev_state in states:
+			var prev_cost := costs[(i - 1) * states + prev_state]
+			if prev_cost == INF:
+				continue
+			var prev_lane := prev_state / (3 * zigs)
+			var prev_dir := (prev_state / zigs) % 3 - 1
+			var prev_zig := prev_state % zigs
+			for lane in Track.LANES:
+				var step := lane - prev_lane
 				if absi(step) > reach or (interval == 0 and step != 0) or step * interval < 0:
 					continue
-				var cost := costs[(i - 1) * Track.LANES + prev] + absi(absi(step) - wanted) * SIZE_COST
+				var dir := signi(step)
+				var zig := mini(prev_zig + 1, ZIGZAG_CAP) if dir * prev_dir < 0 else 0
+				var cost := prev_cost + absi(absi(step) - wanted) * SIZE_COST + noise[i * Track.LANES + lane]
 				if step == 0 and interval != 0:
 					cost += STILL_COST
-				if cost < best:
-					best = cost
-					from[i * Track.LANES + lane] = prev
-			costs[i * Track.LANES + lane] = best
+				cost += maxi(zig - 1, 0) * ZIGZAG_COST
+				var state := i * states + _state(lane, dir, zig)
+				if cost < costs[state]:
+					costs[state] = cost
+					from[state] = prev_state
 	var last := 0
-	for lane in Track.LANES:
-		if costs[(n - 1) * Track.LANES + lane] < costs[(n - 1) * Track.LANES + last]:
-			last = lane
+	for state in states:
+		if costs[(n - 1) * states + state] < costs[(n - 1) * states + last]:
+			last = state
 	for i in range(n - 1, -1, -1):
-		lanes[i] = last
-		last = from[i * Track.LANES + last]
+		lanes[i] = last / (3 * zigs)
+		last = from[i * states + last]
 	return lanes
+
+
+static func _state(lane: int, dir: int, zig: int) -> int:
+	return (lane * 3 + dir + 1) * (ZIGZAG_CAP + 1) + zig
 
 
 ## Cuántos carriles se pueden cruzar entre dos doradas separadas por `gap` beats.

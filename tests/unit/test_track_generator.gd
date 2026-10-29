@@ -129,3 +129,15 @@ func test_adorn_pitch_rises_with_lane_and_fits_chord() -> void:
 		assert_gt(midi, previous)
 		assert_has(Notation.chord_pitch_classes("G"), midi % 12)
 		previous = midi
+
+
+func test_gold_line_does_not_zigzag_for_long() -> void:
+	for seed_value in range(20):
+		var golds := _golds(TrackGenerator.generate(song, seed_value * 7919))
+		var last_dir := 0
+		var chain := 0
+		for i in range(1, golds.size()):
+			var dir := signi(golds[i].lane - golds[i - 1].lane)
+			chain = chain + 1 if dir != 0 and dir == -last_dir else 0
+			last_dir = dir
+			assert_true(chain <= TrackGenerator.ZIGZAG_CAP, "zigzag largo (seed %d beat %s)" % [seed_value, golds[i].beat])
