@@ -88,3 +88,18 @@ func test_touch_zones() -> void:
 	assert_eq(TouchControls.action_at(Vector2(300, 650), area), &"voice")
 	assert_eq(TouchControls.action_at(Vector2(640, 650), area), &"", "zona muerta en el centro de la franja")
 	assert_eq(TouchControls.action_at(Vector2(1100, 650), area), &"throttle")
+
+
+func test_holding_a_side_keeps_changing_lanes() -> void:
+	var pilot := HumanPilot.new()
+	Input.action_press(&"lane_right")
+	var steps := 0
+	for tick in HumanPilot.REPEAT_DELAY_TICKS:
+		steps += pilot.decide(null, null).lane_steps
+	assert_eq(steps, 0, "no repite antes de la demora")
+	for tick in HumanPilot.REPEAT_EVERY_TICKS * 3:
+		steps += pilot.decide(null, null).lane_steps
+	assert_eq(steps, 3)
+	Input.action_release(&"lane_right")
+	assert_eq(pilot.decide(null, null).lane_steps, 0)
+	pilot.free()

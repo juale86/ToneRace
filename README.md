@@ -39,4 +39,4 @@ godot --headless --path . -s addons/gut/gut_cmdln.gd  # tests
 | Acelerar | ↑, W o espacio | A, RT | mantener abajo a la derecha |
 | Riff / Voz | Z / X | X / Y | botones abajo a la izquierda |
 
-En la escena de prueba: P piloto automático, N pista nueva, R reiniciar. El mouse emula toques, así que un clic en la ventana también cambia de carril o acelera.
+Mantener apretado un lado sigue cambiando de carril. En la escena de prueba: P piloto automático, N pista nueva, R reiniciar. El mouse emula toques, así que un clic en la ventana también cambia de carril o acelera.

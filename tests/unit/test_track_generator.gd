@@ -79,14 +79,47 @@ func test_no_boosters_in_intro() -> void:
 		assert_true(b.beat >= song.cycle_beats)
 
 
-func test_higher_note_never_goes_to_a_lower_lane_within_a_line() -> void:
-	var lanes := TrackGenerator._contour_lanes(song.lines["L5"], false)
-	var pitches := lanes.keys()
-	pitches.sort()
-	for i in range(1, pitches.size()):
-		assert_true(lanes[pitches[i]] >= lanes[pitches[i - 1]])
-	var inverted := TrackGenerator._contour_lanes(song.lines["L5"], true)
-	assert_eq(inverted[pitches[0]], Track.LANES - 1)
+func _golds(track: Track) -> Array[Booster]:
+	var result: Array[Booster] = []
+	for b in track.boosters:
+		if b.kind == Booster.Kind.GOLD:
+			result.append(b)
+	return result
+
+
+func test_gold_lanes_follow_the_melody_contour() -> void:
+	for seed_value in range(40):
+		var track := TrackGenerator.generate(song, seed_value * 7919)
+		var golds := _golds(track)
+		var direction := -1 if track.inverted else 1
+		for i in range(1, golds.size()):
+			var interval := golds[i].notes[0].midi - golds[i - 1].notes[0].midi
+			var step := (golds[i].lane - golds[i - 1].lane) * direction
+			if interval == 0:
+				assert_eq(step, 0, "nota repetida, mismo carril (seed %d beat %s)" % [seed_value, golds[i].beat])
+			else:
+				assert_true(step * interval >= 0, "la nota sube y el carril baja (seed %d beat %s)" % [seed_value, golds[i].beat])
+
+
+func test_gold_jumps_always_fit_the_time() -> void:
+	for seed_value in range(40):
+		var golds := _golds(TrackGenerator.generate(song, seed_value * 7919))
+		for i in range(1, golds.size()):
+			var gap := golds[i].beat - golds[i - 1].beat
+			assert_true(absi(golds[i].lane - golds[i - 1].lane) <= TrackGenerator.max_lane_steps(gap),
+				"salto imposible (seed %d beat %s)" % [seed_value, golds[i].beat])
+
+
+func test_gold_line_moves_when_the_note_changes() -> void:
+	var golds := _golds(TrackGenerator.generate(song, 31337))
+	var changes := 0
+	var moves := 0
+	for i in range(1, golds.size()):
+		if golds[i].notes[0].midi != golds[i - 1].notes[0].midi:
+			changes += 1
+			if golds[i].lane != golds[i - 1].lane:
+				moves += 1
+	assert_gt(float(moves) / changes, 0.7, "la línea no se queda pegada a un borde")
 
 
 func test_adorn_pitch_rises_with_lane_and_fits_chord() -> void:
