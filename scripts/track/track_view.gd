@@ -1,19 +1,13 @@
 class_name TrackView
 extends Node3D
-## Dibuja una Track: la ruta, las líneas de carril, una marca por compás y los
-## boosters. Todo procedural y provisorio hasta tener los modelos finales.
+## Dibuja una Track: la ruta (asfalto, carriles y marcas de beat/compás salen de
+## un shader) y los boosters. Todo procedural.
 
 const MESH_STEP := 0.25  # beats entre cortes de la malla
 const MARGIN_BEATS := 16.0
-const EDGE_WIDTH := 0.25
-const LINE_WIDTH := 0.06
+const SHOULDER := 1.6
 const BOOSTER_HEIGHT := 0.5
 
-const ROAD_COLOR := Color(0.05, 0.04, 0.09)
-const EDGE_COLOR := Color(1.0, 0.2, 0.7)
-const LINE_COLOR := Color(0.35, 0.25, 0.8)
-const BAR_COLOR := Color(0.45, 0.3, 0.9)
-const BEAT_COLOR := Color(0.2, 0.15, 0.4)
 const GOLD_COLOR := Color(1.0, 0.75, 0.15)
 const ADORN_COLOR := Color(0.2, 0.9, 1.0)
 
@@ -24,20 +18,16 @@ var _instances := {}  # índice de booster -> [MultiMesh, índice de instancia]
 func build(track: Track) -> void:
 	_track = track
 	var half := Track.LANES * Track.LANE_WIDTH / 2.0
-	_add_mesh(_strip_mesh(-half, half, 0.0), _material(ROAD_COLOR, 0.0))
-	var lines := SurfaceTool.new()
-	lines.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for k in range(1, Track.LANES):
-		var x := -half + k * Track.LANE_WIDTH
-		_append_strip(lines, x - LINE_WIDTH, x + LINE_WIDTH, 0.01)
-	_add_mesh(lines.commit(), _material(LINE_COLOR, 1.5))
-	var edges := SurfaceTool.new()
-	edges.begin(Mesh.PRIMITIVE_TRIANGLES)
-	_append_strip(edges, -half - EDGE_WIDTH, -half, 0.05)
-	_append_strip(edges, half, half + EDGE_WIDTH, 0.05)
-	_add_mesh(edges.commit(), _material(EDGE_COLOR, 3.0))
-	_add_mesh(_cross_marks(half, 4.0, 0.6), _material(BAR_COLOR, 1.6))
-	_add_mesh(_cross_marks(half, 1.0, 0.2), _material(BEAT_COLOR, 0.8))
+	var road := ShaderMaterial.new()
+	road.shader = preload("res://shaders/road.gdshader")
+	road.set_shader_parameter("half_width", half)
+	road.set_shader_parameter("lane_width", Track.LANE_WIDTH)
+	road.set_shader_parameter("lanes", float(Track.LANES))
+	road.set_shader_parameter("units_per_beat", TrackGeometry.UNITS_PER_BEAT)
+	var instance := MeshInstance3D.new()
+	instance.mesh = _road_mesh(-half - SHOULDER, half + SHOULDER)
+	instance.material_override = road
+	add_child(instance)
 	_build_boosters()
 
 
@@ -80,64 +70,31 @@ func _build_boosters() -> void:
 		add_child(instance)
 
 
-func _strip_mesh(left: float, right: float, height: float) -> ArrayMesh:
+## Cinta que sigue la pista entre los desplazamientos laterales left y right,
+## con UV = (lateral, beat) para el shader.
+func _road_mesh(left: float, right: float) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	_append_strip(st, left, right, height)
-	return st.commit()
-
-
-## Una cinta que sigue la pista entre los desplazamientos laterales left y right.
-func _append_strip(st: SurfaceTool, left: float, right: float, height: float) -> void:
 	var beat := -MARGIN_BEATS
 	var previous := PackedVector3Array()
 	while beat <= _track.length_beats + MARGIN_BEATS:
 		var frame := _track.geometry.frame_at(beat)
-		var up := frame.basis.y * height
-		var current := PackedVector3Array([
-			frame.origin + frame.basis.x * left + up,
-			frame.origin + frame.basis.x * right + up,
-		])
+		var current := PackedVector3Array([frame.origin + frame.basis.x * left, frame.origin + frame.basis.x * right])
 		if not previous.is_empty():
-			_append_quad(st, previous[0], previous[1], current[1], current[0])
+			var corners := [previous[0], previous[1], current[1], current[0]]
+			var uvs := [Vector2(left, beat - MESH_STEP), Vector2(right, beat - MESH_STEP), Vector2(right, beat), Vector2(left, beat)]
+			for k in [0, 2, 1, 0, 3, 2]:  # horario visto desde arriba = cara frontal
+				st.set_uv(uvs[k])
+				st.add_vertex(corners[k])
 		previous = current
 		beat += MESH_STEP
-
-
-## Franjas transversales cada `every` beats, de `thickness` unidades de ancho.
-func _cross_marks(half: float, every: float, thickness: float) -> ArrayMesh:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var d := thickness / 2.0 / TrackGeometry.UNITS_PER_BEAT
-	var beat := 0.0
-	while beat <= _track.length_beats:
-		var a := _track.geometry.frame_at(beat - d)
-		var b := _track.geometry.frame_at(beat + d)
-		var up_a := a.basis.y * 0.02
-		var up_b := b.basis.y * 0.02
-		_append_quad(st,
-			a.origin - a.basis.x * half + up_a, a.origin + a.basis.x * half + up_a,
-			b.origin + b.basis.x * half + up_b, b.origin - b.basis.x * half + up_b)
-		beat += every
+	st.generate_normals()
 	return st.commit()
-
-
-func _append_quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3) -> void:
-	for v in [a, b, c, a, c, d]:
-		st.add_vertex(v)
-
-
-func _add_mesh(mesh: Mesh, material: Material) -> void:
-	var instance := MeshInstance3D.new()
-	instance.mesh = mesh
-	instance.material_override = material
-	add_child(instance)
 
 
 func _material(color: Color, emission: float) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = color
-	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	if emission > 0.0:
 		m.emission_enabled = true
 		m.emission = color

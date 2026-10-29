@@ -20,6 +20,7 @@ var rig: MusicRig
 var runner: Runner
 var track: Track
 var view: TrackView
+var world: DesertWorld
 var human := HumanPilot.new()
 var auto := AutoPilot.new()
 var lateral := 0.0
@@ -76,6 +77,11 @@ func _start(seed_value: int) -> void:
 	view = TrackView.new()
 	add_child(view)
 	view.build(track)
+	if world:
+		world.queue_free()
+	world = DesertWorld.new()
+	add_child(world)
+	world.build(track)
 	runner.reset(-COUNT_IN_BEATS)
 	lateral = Track.lane_offset(runner.lane)
 	gold_hits = 0
