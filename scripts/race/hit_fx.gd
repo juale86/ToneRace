@@ -1,7 +1,7 @@
 class_name HitFx
 extends Node3D
 ## Efectos al agarrar un booster: un destello donde estaba, una onda fina sobre la
-## ruta, chispas y corcheas de luz que suben. Va colgado del auto, así acompaña al
+## ruta, chispas y corcheas de luz que salen de abajo del auto hacia atrás. Va colgado del auto, así acompaña al
 ## jugador en vez de quedar atrás a toda velocidad. Usa un pool fijo: no crea
 ## nodos durante la carrera.
 
@@ -31,7 +31,7 @@ func _ready() -> void:
 	spark_mesh.size = Vector2.ONE * 0.18
 	spark_mesh.material = _shader_material(soft_shader)
 	var note_mesh := QuadMesh.new()
-	note_mesh.size = Vector2.ONE * 0.95
+	note_mesh.size = Vector2.ONE * 0.65
 	note_mesh.material = _shader_material(preload("res://shaders/note_particle.gdshader"))
 
 	for i in POOL:
@@ -62,18 +62,23 @@ func _ready() -> void:
 		spark_process.gravity = Vector3(0, -14, 0)
 		_sparks.append(sparks)
 
-		var notes := _particles(note_mesh, 3, 0.8)
+		var notes := _particles(note_mesh, 3, 0.7)
+		# Las corcheas nacen debajo del auto y salen despedidas hacia atrás.
+		notes.position = Vector3(0, 0.15, 0.4)
 		var note_process: ParticleProcessMaterial = notes.process_material
-		note_process.spread = 45.0
-		note_process.initial_velocity_min = 2.5
-		note_process.initial_velocity_max = 4.0
-		note_process.gravity = Vector3(0, -1.5, 0)
+		note_process.direction = Vector3(0, 0.12, 1)
+		note_process.spread = 28.0
+		note_process.initial_velocity_min = 8.0
+		note_process.initial_velocity_max = 13.0
+		note_process.gravity = Vector3(0, 0.6, 0)
+		note_process.damping_min = 4.0
+		note_process.damping_max = 6.0
 		note_process.angle_min = -20.0
 		note_process.angle_max = 20.0
 		note_process.scale_min = 0.7
 		note_process.scale_max = 1.1
-		note_process.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-		note_process.emission_sphere_radius = 0.5
+		note_process.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+		note_process.emission_box_extents = Vector3(0.6, 0.05, 0.9)
 		_notes.append(notes)
 
 
@@ -83,7 +88,7 @@ func hit(color: Color, lateral: float, strength: float) -> void:
 	var i := _next
 	_next = (_next + 1) % POOL
 	_ages[i] = 0.0
-	for node: Node3D in [_rings[i], _flashes[i], _sparks[i], _notes[i]]:
+	for node: Node3D in [_rings[i], _flashes[i], _sparks[i]]:
 		node.position.x = lateral
 	_rings[i].visible = true
 	_flashes[i].visible = true
