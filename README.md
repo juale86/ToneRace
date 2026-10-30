@@ -67,8 +67,10 @@ Abajo al centro ves el BPM, la escalera de 14 marchas y la barra de turbo.
 | Carril izquierda / derecha | ← / → o A / D | cruceta, LB / RB | tap en la mitad izquierda / derecha de los 2/3 superiores |
 | Acelerar (mantener, gasta turbo) | ↑, W o espacio | A, RT | mantener abajo a la derecha |
 | Riff / Voz | Z / X | X / Y | botones abajo a la izquierda |
+| Volumen − / + | - / + | — | botones arriba a la derecha |
+| Silencio | M | — | botón del parlante, arriba a la derecha |
 
-Si mantenés apretado un lado, el auto sigue cambiando de carril. El mouse emula toques, así que un clic en la ventana también cambia de carril o acelera.
+Si mantenés apretado un lado, el auto sigue cambiando de carril. El volumen y el silencio se guardan entre partidas. El mouse emula toques, así que un clic en la ventana también cambia de carril o acelera.
 
 **Teclas de desarrollo** (en la escena de prueba):
 

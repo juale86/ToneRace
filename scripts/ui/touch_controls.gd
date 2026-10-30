@@ -11,6 +11,9 @@ const RIFF_END := 0.17
 const VOICE_END := 0.34
 const THROTTLE_START := 0.7
 
+## Controles encima de las zonas (como los de volumen): un toque ahí no dispara acciones.
+var blockers: Array[Control] = []
+
 ## Toques activos: índice → acción que mantienen apretada.
 var _touches := {}
 
@@ -39,6 +42,8 @@ func _input(event: InputEvent) -> void:
 		return
 	var touch := event as InputEventScreenTouch
 	if touch.pressed:
+		if _blocked(touch.position):
+			return
 		var action := action_at(touch.position, size)
 		if action != &"" and not _touches.has(touch.index):
 			_touches[touch.index] = action
@@ -47,6 +52,13 @@ func _input(event: InputEvent) -> void:
 		_send(_touches[touch.index], false)
 		_touches.erase(touch.index)
 	queue_redraw()
+
+
+func _blocked(pos: Vector2) -> bool:
+	for blocker in blockers:
+		if blocker.is_visible_in_tree() and blocker.get_global_rect().has_point(pos):
+			return true
+	return false
 
 
 func _notification(what: int) -> void:

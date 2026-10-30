@@ -3,6 +3,7 @@ extends Node3D
 ##
 ## ←/→ o A/D: carril (apaga el piloto automático)   ↑, W o espacio: acelerar (gasta turbo)
 ## Z: Riff   X: Voz   P: piloto automático   N: pista nueva   R: reiniciar la misma pista
+## M: silencio   - / +: volumen (también con los botones de arriba a la derecha)
 ## Táctil (o mouse): mitades de arriba = carril; abajo Riff/Voz a la izquierda, acelerador a la derecha.
 ## Seed fijo: godot --path . -- --seed=K7PX3M     Controles táctiles visibles en PC: -- --touch
 
@@ -36,6 +37,7 @@ var _message_left := 0.0
 var _fx := HitFx.new()
 var _wind := WindFx.new()
 var _hud := RaceHud.new()
+var _volume := VolumeControls.new()
 
 @onready var _camera: Camera3D = $Camera
 @onready var _car: CarView = $Car
@@ -62,6 +64,8 @@ func _ready() -> void:
 	_wind.setup(_camera, _car, CarView.REAR_WHEELS)
 	$UI.add_child(_hud)
 	$UI.move_child(_hud, 0)
+	$UI.add_child(_volume)
+	_touch.blockers.append(_volume)
 	add_child(human)
 	add_child(auto)
 	var args := OS.get_cmdline_user_args()
@@ -198,7 +202,7 @@ func _process(delta: float) -> void:
 		"BPM %.0f (crucero %.0f)   ciclo %d/%d   %s" % [clock.bpm, runner.cruise_bpm, cycle + 1, track.cycles.size(), line if line != "" else "intro"],
 		"doradas %d/%d   combo %d (mejor %d)" % [runner.gold_hits, track.count(Booster.Kind.GOLD), runner.combo, runner.best_combo],
 		"piloto automático %s" % ("ON" if autopilot else "off"),
-		"←/→ carril · ↑ acelerar · Z Riff · X Voz · P piloto · N pista nueva · R reiniciar",
+		"←/→ carril · ↑ acelerar · Z Riff · X Voz · P piloto · N pista nueva · R reiniciar · M silencio · -/+ volumen",
 		_message if _message_left > 0.0 else "",
 	])
 

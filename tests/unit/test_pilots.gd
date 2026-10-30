@@ -200,3 +200,16 @@ func test_holding_a_side_keeps_changing_lanes() -> void:
 	Input.action_release(&"lane_right")
 	assert_eq(pilot.decide(null, null).lane_steps, 0)
 	pilot.free()
+
+
+func test_touch_on_a_blocker_does_nothing() -> void:
+	var touch := TouchControls.new()
+	touch.size = Vector2(1000, 600)
+	var blocker := Control.new()
+	touch.add_child(blocker)
+	add_child_autofree(touch)
+	blocker.position = Vector2(800, 0)
+	blocker.size = Vector2(200, 60)
+	touch.blockers.append(blocker)
+	assert_true(touch._blocked(Vector2(900, 30)))
+	assert_false(touch._blocked(Vector2(900, 100)))
