@@ -19,3 +19,6 @@ Thumbs.db
 
 # Audio generado por tools/render_audio.py (regenerable)
 /assets/audio/generated/
+
+# Herramientas descargadas por install.ps1 / install.sh
+/.tools/

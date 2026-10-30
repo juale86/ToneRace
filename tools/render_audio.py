@@ -25,10 +25,26 @@ import wave
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOCALAPPDATA = os.environ.get("LOCALAPPDATA", "")
-DEFAULT_FLUIDSYNTH = os.path.join(
-    LOCALAPPDATA, "Programs", "fluidsynth", "fluidsynth-v2.6.1-win10-x64-cpp11", "bin", "fluidsynth.exe"
+TOOLS = os.path.join(ROOT, ".tools")  # lo llenan install.ps1 / install.sh
+
+
+def first_existing(*paths):
+    """Primer candidato que existe; si ninguno, el primero (para el mensaje de error)."""
+    for p in paths:
+        if p and os.path.isfile(p):
+            return p
+    return paths[0]
+
+
+DEFAULT_FLUIDSYNTH = first_existing(
+    os.path.join(TOOLS, "fluidsynth", "bin", "fluidsynth.exe"),
+    os.path.join(LOCALAPPDATA, "Programs", "fluidsynth", "fluidsynth-v2.6.1-win10-x64-cpp11", "bin", "fluidsynth.exe"),
+    shutil.which("fluidsynth"),
 )
-DEFAULT_SOUNDFONT = os.path.join(LOCALAPPDATA, "Programs", "soundfonts", "GeneralUser-GS.sf2")
+DEFAULT_SOUNDFONT = first_existing(
+    os.path.join(TOOLS, "GeneralUser-GS.sf2"),
+    os.path.join(LOCALAPPDATA, "Programs", "soundfonts", "GeneralUser-GS.sf2"),
+)
 
 SAMPLE_RATE = 44100
 PPQ = 480
