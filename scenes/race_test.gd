@@ -1,7 +1,7 @@
 extends Node3D
 ## Banco de pruebas: la pista generada por seed, con el auto y los controles.
 ##
-## ←/→ o A/D: carril (apaga el piloto automático)   ↑, W o espacio: acelerar
+## ←/→ o A/D: carril (apaga el piloto automático)   ↑, W o espacio: acelerar (gasta turbo)
 ## Z: Riff   X: Voz   P: piloto automático   N: pista nueva   R: reiniciar la misma pista
 ## Táctil (o mouse): mitades de arriba = carril; abajo Riff/Voz a la izquierda, acelerador a la derecha.
 ## Seed fijo: godot --path . -- --seed=K7PX3M     Controles táctiles visibles en PC: -- --touch
@@ -17,6 +17,8 @@ const FOV_MAX := 88.0
 const MESSAGE_SECONDS := 1.2
 ## Sacudida de cámara (unidades) a la marcha más alta; crece con el cuadrado del tempo.
 const SHAKE_MAX := 0.09
+## Apertura extra de cámara (grados) mientras se gasta turbo.
+const TURBO_FOV := 8.0
 
 var rig: MusicRig
 var runner: Runner
@@ -27,11 +29,8 @@ var human := HumanPilot.new()
 var auto := AutoPilot.new()
 var lateral := 0.0
 var autopilot := true
-var gold_hits := 0
-var combo := 0
-var best_combo := 0
-var _next_booster := 0
 var _pending: Array[PendingNote] = []
+var _turbo_kick := 0.0
 var _message := ""
 var _message_left := 0.0
 var _fx := HitFx.new()
@@ -57,7 +56,7 @@ func _ready() -> void:
 	rig = MusicRig.new()
 	add_child(rig)
 	rig.setup("canon", "rock")
-	runner = Runner.new(rig.min_bpm, rig.max_bpm)
+	runner = Runner.new(rig.gear_bpms)
 	_car.add_child(_fx)
 	add_child(_wind)
 	_wind.setup(_camera, _car, CarView.REAR_WHEELS)
@@ -75,8 +74,13 @@ func _ready() -> void:
 				seed_value = decoded
 	_start(seed_value)
 	if "--autotest" in args:
-		await get_tree().create_timer(30.0).timeout
-		print("AUTOTEST piloto %s, doradas %d, combo %d, mejor %d, beat %.1f" % [autopilot, gold_hits, combo, best_combo, runner.clock.beat])
+		var seconds := 30.0
+		for arg in args:
+			if arg.begins_with("--autotest-seconds="):
+				seconds = arg.trim_prefix("--autotest-seconds=").to_float()
+		await get_tree().create_timer(seconds).timeout
+		print("AUTOTEST piloto %s, doradas %d, combo %d, mejor %d, beat %.1f, BPM %.1f, marcha %d, turbo %.2f" % [
+			autopilot, runner.gold_hits, runner.combo, runner.best_combo, runner.clock.beat, runner.clock.bpm, runner.gear() + 1, runner.turbo])
 		get_tree().quit()
 
 
@@ -94,10 +98,6 @@ func _start(seed_value: int) -> void:
 	world.build(track)
 	runner.reset(-COUNT_IN_BEATS)
 	lateral = Track.lane_offset(runner.lane)
-	gold_hits = 0
-	combo = 0
-	best_combo = 0
-	_next_booster = 0
 	_pending.clear()
 	rig.base.play(runner.clock.beat, runner.clock.bpm)
 
@@ -107,41 +107,42 @@ func _physics_process(delta: float) -> void:
 	if input.lane_steps != 0:
 		autopilot = false
 	if autopilot:
-		input.lane_steps = auto.decide(runner, track).lane_steps
+		var auto_input := auto.decide(runner, track)
+		input.lane_steps = auto_input.lane_steps
+		input.throttle = input.throttle or auto_input.throttle
 	if input.riff:
 		_show("Riff: llega en el paso 6")
 	if input.voice:
 		_show("Voz: llega en el paso 6")
-	runner.step(input, delta)
-
-	while _next_booster < track.boosters.size() and track.boosters[_next_booster].beat <= runner.clock.beat:
-		_cross(_next_booster)
-		_next_booster += 1
+	_hud.throttling = input.throttle and runner.turbo > 0.0
+	for crossing in runner.step(input, delta, track):
+		_cross(crossing)
 	_play_pending()
 
 	if runner.clock.beat >= track.length_beats + COUNT_IN_BEATS:
 		_start(track.seed_value)
 
 
-func _cross(index: int) -> void:
-	var booster := track.boosters[index]
-	var gold := booster.kind == Booster.Kind.GOLD
-	if booster.lane != runner.lane:
-		if gold and combo > 0:
-			_hud.on_combo_break(combo)
-			combo = 0
-		return
-	view.hide_booster(index)
+func _cross(crossing: Runner.Crossing) -> void:
+	var booster := track.boosters[crossing.index]
+	match crossing.result:
+		Runner.Result.GOLD_MISS:
+			if crossing.combo_before > 0:
+				_hud.on_combo_break(crossing.combo_before)
+			if crossing.gear_dropped:
+				_hud.on_gear_drop()
+			return
+		Runner.Result.ADORN_MISS:
+			return
+	var gold := crossing.result == Runner.Result.GOLD_HIT
+	view.hide_booster(crossing.index)
 	var color := TrackView.GOLD_COLOR if gold else TrackView.ADORN_COLOR
-	_fx.hit(color, Track.lane_offset(booster.lane) - lateral, clampf(combo / 16.0, 0.0, 1.0))
+	_fx.hit(color, Track.lane_offset(booster.lane) - lateral, clampf(runner.combo / 16.0, 0.0, 1.0))
 	_car.flash(color)
 	for note in booster.notes:
 		_pending.append(PendingNote.new(note, "lead" if gold else "adorn"))
 	if gold:
-		gold_hits += 1
-		combo += 1
-		best_combo = maxi(best_combo, combo)
-		_hud.on_hit(combo)
+		_hud.on_hit(runner.combo)
 
 
 ## Las notas de un booster pueden caer un poco después de agarrarlo (corcheas agrupadas).
@@ -166,10 +167,12 @@ func _process(delta: float) -> void:
 	var tick := 1.0 / Engine.physics_ticks_per_second
 	var beat := clock.interpolated(Engine.get_physics_interpolation_fraction(), tick)
 	rig.base.update(beat, clock.bpm, delta)
-	var intensity := clampf(inverse_lerp(rig.min_bpm, rig.max_bpm, clock.bpm), 0.0, 1.0)
+	_turbo_kick = lerpf(_turbo_kick, 1.0 if _hud.throttling else 0.0, 1.0 - exp(-6.0 * delta))
+	var intensity := runner.intensity()
+	_hud.set_speed(runner.turbo, runner.gear(), rig.gear_bpms.size(), clock.bpm)
 	RenderingServer.global_shader_parameter_set(&"beat", beat)
 	RenderingServer.global_shader_parameter_set(&"speed", intensity)
-	_wind.update(clock.bpm / 60.0 * TrackGeometry.UNITS_PER_BEAT, intensity)
+	_wind.update(clock.bpm / 60.0 * TrackGeometry.UNITS_PER_BEAT, maxf(intensity, _turbo_kick))
 
 	var previous := lateral
 	lateral = move_toward(lateral, Track.lane_offset(runner.lane), LATERAL_SPEED * delta)
@@ -180,7 +183,7 @@ func _process(delta: float) -> void:
 
 	var back := track.geometry.frame_at(beat - CAMERA_BACK / TrackGeometry.UNITS_PER_BEAT)
 	var ahead := track.geometry.frame_at(beat + CAMERA_LOOK / TrackGeometry.UNITS_PER_BEAT)
-	_camera.fov = remap(clock.bpm, rig.min_bpm, rig.max_bpm, FOV_MIN, FOV_MAX)
+	_camera.fov = remap(clock.bpm, rig.min_bpm, rig.max_bpm, FOV_MIN, FOV_MAX) + TURBO_FOV * _turbo_kick
 	_camera.global_position = back.origin + back.basis.y * CAMERA_HEIGHT + back.basis.x * lateral * 0.5
 	_camera.look_at(ahead.origin + ahead.basis.x * lateral * 0.3, back.basis.y)
 	var t := Time.get_ticks_msec() / 1000.0
@@ -192,8 +195,8 @@ func _process(delta: float) -> void:
 	var line := track.cycles[cycle] if cycle >= 0 and cycle < track.cycles.size() else ""
 	_label.text = "\n".join([
 		"Pista %s  (generador v%d)%s" % [SeedCode.encode(track.seed_value), track.version, "  agudo ←" if track.inverted else ""],
-		"BPM %.0f   ciclo %d/%d   %s" % [clock.bpm, cycle + 1, track.cycles.size(), line if line != "" else "intro"],
-		"doradas %d/%d   combo %d (mejor %d)" % [gold_hits, track.count(Booster.Kind.GOLD), combo, best_combo],
+		"BPM %.0f (crucero %.0f)   ciclo %d/%d   %s" % [clock.bpm, runner.cruise_bpm, cycle + 1, track.cycles.size(), line if line != "" else "intro"],
+		"doradas %d/%d   combo %d (mejor %d)" % [runner.gold_hits, track.count(Booster.Kind.GOLD), runner.combo, runner.best_combo],
 		"piloto automático %s" % ("ON" if autopilot else "off"),
 		"←/→ carril · ↑ acelerar · Z Riff · X Voz · P piloto · N pista nueva · R reiniciar",
 		_message if _message_left > 0.0 else "",

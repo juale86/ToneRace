@@ -51,14 +51,21 @@ Todo queda dentro de la carpeta del proyecto: no se instala Godot en el sistema 
 
 Vas por una ruta de **5 carriles**. Los boosters **dorados** son las notas de la melodía: el carril de cada uno es la altura de la nota (grave a la izquierda, agudo a la derecha). Si pasás por encima, la nota suena con su efecto de luz. Los boosters **celestes** son adornos: notas del acorde de ese momento.
 
-Si encadenás aciertos, armás **combo**. Si se te escapa una nota dorada, el combo se corta. El acelerador sube el tempo, y con él la velocidad y la música. Si lo soltás, el auto vuelve de a poco a la velocidad crucero.
+### Velocidad, turbo y marchas
+
+- Cada dorada que agarrás **carga turbo**, y carga más cuanto más largo es el **combo**. Los adornos cargan un poco.
+- El **acelerador** gasta turbo y sube el tempo: el auto va más rápido y la música también. Sin turbo, acelerar no hace nada.
+- Lo que ganás **se conserva**: al soltar, seguís a esa velocidad.
+- Cada dorada que se te escapa corta el combo y te frena un poco. **Tres seguidas te bajan una marcha** y la música "se cae". El piso es la marcha más baja.
+
+Abajo al centro ves el BPM, la escalera de 14 marchas y la barra de turbo.
 
 ### Controles
 
 | Acción | Teclado | Gamepad | Táctil |
 |---|---|---|---|
 | Carril izquierda / derecha | ← / → o A / D | cruceta, LB / RB | tap en la mitad izquierda / derecha de los 2/3 superiores |
-| Acelerar (mantener) | ↑, W o espacio | A, RT | mantener abajo a la derecha |
+| Acelerar (mantener, gasta turbo) | ↑, W o espacio | A, RT | mantener abajo a la derecha |
 | Riff / Voz | Z / X | X / Y | botones abajo a la izquierda |
 
 Si mantenés apretado un lado, el auto sigue cambiando de carril. El mouse emula toques, así que un clic en la ventana también cambia de carril o acelera.
@@ -82,6 +89,7 @@ godot --path .                          # carrera de prueba con pista aleatoria
 godot --path . -- --seed=K7PX3M         # una pista concreta (código de 6 caracteres)
 godot --path . -- --touch               # muestra los controles táctiles en PC (se usan con el mouse)
 godot --path . -- --autotest            # 30 s con piloto automático, imprime resultados
+godot --path . -- --autotest --autotest-seconds=60   # lo mismo, con otra duración
 godot --path . scenes/music_test.tscn -- --autotest   # barrido de tempo, imprime la deriva del audio
 ```
 
@@ -181,7 +189,7 @@ ToneRace/
 2. ✅ Pipeline de audio (género rock)
 3. ✅ Pista procedural por seed: 5 carriles, línea dorada, adornos, curvas y subidas
 4. ✅ Auto + controles (táctil, teclado y gamepad), mundo del desierto y efectos
-5. ⬜ Loop de velocidad: turbo, desaceleración por fallos, marchas
+5. ✅ Loop de velocidad: turbo, desaceleración por fallos, marchas
 6. ⬜ Riff y Voz con acompañante
 7. ⬜ Estructura de carrera: intro, variaciones, final, llegada y posiciones
 8. ⬜ 3 bots con audio filtrado y espacializado
