@@ -201,6 +201,7 @@ ToneRace/
 
 ## Licencias y créditos
 
+- **ToneRace** (código, shaders, datos y herramientas): [MIT](LICENSE).
 - **Música:** Canon en Re de Johann Pachelbel (dominio público). Los arreglos son propios y se generan a partir de `data/`.
 - **SoundFont:** [GeneralUser GS](https://github.com/mrbumpy409/GeneralUser-GS) de S. Christian Collins, bajo su propia licencia, que permite el uso libre. No se incluye en el repo: lo baja el instalador.
 - **[Godot Engine](https://godotengine.org):** MIT.
